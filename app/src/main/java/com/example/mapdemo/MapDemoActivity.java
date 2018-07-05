@@ -2,6 +2,8 @@ package com.example.mapdemo;
 
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.Paint;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
@@ -38,6 +40,10 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.maps.android.ui.IconGenerator;
+
+import java.util.ArrayList;
+import java.util.Random;
 
 import permissions.dispatcher.NeedsPermission;
 import permissions.dispatcher.RuntimePermissions;
@@ -45,7 +51,7 @@ import permissions.dispatcher.RuntimePermissions;
 import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 
 @RuntimePermissions
-public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMapLongClickListener {
+public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMapLongClickListener, GoogleMap.OnMarkerDragListener{
 
     private SupportMapFragment mapFragment;
     private GoogleMap map;
@@ -84,6 +90,17 @@ public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMa
                 public void onMapReady(GoogleMap map) {
                     loadMap(map);
                     map.setInfoWindowAdapter(new CustomWindowAdapter(getLayoutInflater()));
+                    Random rand = new Random();
+                    int r = rand.nextInt(4);
+                    if(r == 0)
+                        map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                    else if (r == 1)
+                        map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+                    else if (r == 2)
+                        map.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+                    else
+                        map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+
                 }
             });
         } else {
@@ -101,6 +118,7 @@ public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMa
             MapDemoActivityPermissionsDispatcher.startLocationUpdatesWithPermissionCheck(this);
             // Attach long click listener to the map here
             map.setOnMapLongClickListener(this);
+            map.setOnMarkerDragListener(this);
 
         } else {
             Toast.makeText(this, "Error - Map was null!!", Toast.LENGTH_SHORT).show();
@@ -296,22 +314,36 @@ public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMa
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        // Define color of marker icon
-                        BitmapDescriptor defaultMarker =
-                                BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE);
                         // Extract content from alert dialog
                         String title = ((EditText) alertDialog.findViewById(R.id.etTitle)).
                                 getText().toString();
                         String snippet = ((EditText) alertDialog.findViewById(R.id.etSnippet)).
                                 getText().toString();
+                        IconGenerator iconGenerator = new IconGenerator(MapDemoActivity.this);
+                        Random rand = new Random();
+                        int r = rand.nextInt(3);
+// Possible color options:
+// STYLE_WHITE, STYLE_RED, STYLE_BLUE, STYLE_GREEN, STYLE_PURPLE, STYLE_ORANGE
+                        if(r == 0)
+                            iconGenerator.setStyle(IconGenerator.STYLE_BLUE);
+                        else if(r == 1)
+                            iconGenerator.setStyle(IconGenerator.STYLE_WHITE);
+                        else
+                            iconGenerator.setStyle(IconGenerator.STYLE_RED);
+
+// Swap text here to live inside speech bubble
+                        Bitmap bitmap = iconGenerator.makeIcon(title);
+// Use BitmapDescriptorFactory to create the marker
+                        BitmapDescriptor icon = BitmapDescriptorFactory.fromBitmap(bitmap);
                         // Creates and adds marker to the map
                         Marker marker = map.addMarker(new MarkerOptions()
                                 .position(point)
                                 .title(title)
                                 .snippet(snippet)
-                                .icon(defaultMarker));
+                                .icon(icon));
                         // Animate marker using drop effect
                         // --> Call the dropPinEffect method here
+                        marker.setDraggable(true);
                         dropPinEffect(marker);
 
                     }
@@ -325,6 +357,23 @@ public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMa
 
         // Display the dialog
         alertDialog.show();
+    }
+
+    @Override
+    public void onMarkerDragStart(Marker marker) {
+
+    }
+
+    @Override
+    public void onMarkerDrag(Marker marker) {
+
+    }
+
+    @Override
+    public void onMarkerDragEnd(Marker marker) {
+        Toast.makeText(this, "Change Marker Location", Toast.LENGTH_LONG).show();
+        // Display the alert dialog
+        showAlertDialogForPoint(marker.getPosition());
     }
 
     // Define a DialogFragment that displays the error dialog
